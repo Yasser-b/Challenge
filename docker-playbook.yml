@@ -1,0 +1,39 @@
+- name: Configuration et  Provisionnement de VM
+  hosts: all
+  become: yes
+  tasks:
+    - name: Installer Docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Ajouter docker user et group
+      user:
+        name: "{{ ansible_user_id }}"
+        group: docker
+
+    - name: Maj de Docker la configuration de log
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "100m"
+            }
+          }
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Redemarrer Docker pour appliquer la configuration du log
+      service:
+        name: docker
+        state: restarted
+
+    - name: Ajouter cron job pour suppression de containers non utilisé
+      cron:
+        name: "Docker system cleanup"
+        special_time: daily
+        job: "docker system prune -af"
